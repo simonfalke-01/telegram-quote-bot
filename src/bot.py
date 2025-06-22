@@ -29,6 +29,7 @@ class QuoteBot:
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("colors", self.colors_command))
+        self.application.add_handler(CommandHandler("quote", self.quote_command))
         self.application.add_handler(MessageHandler(
             filters.TEXT & (~filters.COMMAND), 
             self.handle_message
@@ -38,12 +39,19 @@ class QuoteBot:
         """Handle /start command."""
         welcome_text = (
             "👋 Welcome to Quote Bot!\n\n"
-            "To create a quote card:\n"
+            "📱 **Two ways to use:**\n\n"
+            "**Method 1 - Quote command:**\n"
+            "`/quote [color] message text`\n"
+            "Works in DMs and groups where bot is added\n\n"
+            "**Method 2 - Reply mention:**\n"
             "1. Reply to any message\n"
-            "2. Mention me (@your_bot_username) in your reply\n"
-            "3. Optionally specify a color (e.g., 'red' or '#FF5733')\n\n"
-            "Example: '@your_bot_username blue' or '@your_bot_username #FF5733'\n\n"
-            "Use /colors to see available color names\n"
+            "2. Mention me in your reply\n"
+            "3. Optionally specify a color\n\n"
+            "**Examples:**\n"
+            "• `/quote Hello world!`\n"
+            "• `/quote red Hello world!`\n"
+            "• Reply + `@bot_username blue`\n\n"
+            "Use /colors to see available colors\n"
             "Use /help for more information"
         )
         await update.message.reply_text(welcome_text)
@@ -76,6 +84,76 @@ class QuoteBot:
         colors_text = "🎨 Available colors:\n\n" + ", ".join(colors)
         colors_text += "\n\nYou can also use hex colors like #FF5733"
         await update.message.reply_text(colors_text)
+    
+    async def quote_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /quote command for creating quote cards."""
+        if not context.args:
+            await update.message.reply_text(
+                "Please provide text to quote!\n\n"
+                "Usage: `/quote [color] message text`\n"
+                "Example: `/quote red Hello world!`"
+            )
+            return
+        
+        try:
+            # Parse arguments: [color] message_text
+            args_text = ' '.join(context.args)
+            parts = args_text.split(' ', 1)
+            
+            if len(parts) == 1:
+                color = "blue"
+                message_text = parts[0]
+            else:
+                # Check if first part is a color
+                first_part = parts[0].lower()
+                available_colors = get_available_colors()
+                if first_part in available_colors or first_part.startswith('#'):
+                    color = first_part
+                    message_text = parts[1] if len(parts) > 1 else "Sample text"
+                else:
+                    color = "blue"
+                    message_text = args_text
+            
+            # Use command user's name as author
+            user = update.message.from_user
+            author_name = self._get_user_display_name(user)
+            
+            # Log quote command
+            chat_info = f"@{update.message.chat.username}" if update.message.chat.username else f"Chat ID: {update.message.chat.id}"
+            logger.info(f"💬 Quote command: {author_name} in {chat_info} -> quoting '{message_text[:50]}...' with color '{color}'")
+            
+            # Get user avatar
+            avatar_url = None
+            try:
+                photos = await context.bot.get_user_profile_photos(user.id, limit=1)
+                if photos.photos:
+                    photo = photos.photos[0][-1]
+                    file = await context.bot.get_file(photo.file_id)
+                    avatar_url = file.file_path
+            except Exception as e:
+                logger.warning(f"Failed to get profile photo: {e}")
+            
+            # Generate quote card
+            quote_image = self.generator.generate_quote_card(
+                message_text=message_text,
+                author_name=author_name,
+                avatar_url=avatar_url,
+                background_color=color
+            )
+            
+            # Send the image
+            await update.message.reply_photo(
+                photo=quote_image,
+                caption=f"Quote by {author_name}"
+            )
+            
+            logger.info(f"✅ Quote card generated successfully for {author_name}")
+            
+        except Exception as e:
+            logger.error(f"Error generating quote card from command: {e}")
+            await update.message.reply_text(
+                "❌ Sorry, I couldn't generate the quote card. Please try again."
+            )
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle regular messages that mention the bot."""

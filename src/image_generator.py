@@ -56,7 +56,7 @@ class QuoteCardGenerator:
         if not initials:
             initials = 'U'
         
-        font = self._get_font(32, bold=True)
+        font = self._get_font(40, bold=True)
         bbox = draw.textbbox((0, 0), initials, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
@@ -150,13 +150,13 @@ class QuoteCardGenerator:
             image.paste(avatar, (avatar_x, avatar_y))
         
         # Author name
-        name_font = self._get_font(24, bold=True)
+        name_font = self._get_font(32, bold=True)
         name_x = avatar_x + self.avatar_size + 20
         name_y = avatar_y + 10
         draw.text((name_x, name_y), author_name, fill=(50, 50, 50), font=name_font)
         
         # Message text
-        text_font = self._get_font(20)
+        text_font = self._get_font(28)
         text_start_y = avatar_y + self.avatar_size + 30
         text_max_width = self.card_width - (2 * card_margin) - (2 * self.padding)
         
@@ -164,13 +164,14 @@ class QuoteCardGenerator:
         lines = self._wrap_text(message_text, text_font, text_max_width)
         
         # Limit lines to fit in card
-        max_lines = (self.card_height - text_start_y - card_margin - self.padding) // 30
+        line_height = 35  # Increased line height for larger font
+        max_lines = (self.card_height - text_start_y - card_margin - self.padding) // line_height
         if len(lines) > max_lines:
             lines = lines[:max_lines-1] + ['...']
         
         # Draw text lines
         for i, line in enumerate(lines):
-            line_y = text_start_y + (i * 30)
+            line_y = text_start_y + (i * line_height)
             draw.text((card_margin + self.padding, line_y), line, fill=(70, 70, 70), font=text_font)
         
         # Save to BytesIO
