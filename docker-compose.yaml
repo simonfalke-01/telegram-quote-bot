@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  quote-bot:
+    build: .
+    container_name: telegram-quote-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - quote-bot-network
+    
+    # Optional health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; print('Bot running')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  quote-bot-network:
+    driver: bridge
+
+volumes:
+  logs:
