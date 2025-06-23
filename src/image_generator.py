@@ -6,21 +6,45 @@ from .color_utils import parse_color
 
 class QuoteCardGenerator:
     def __init__(self):
-        self.card_width = 800
-        self.card_height = 400
-        self.padding = 40
-        self.avatar_size = 80
+        # Significantly increased dimensions for better resolution
+        self.card_width = 1600
+        self.card_height = 800
+        self.padding = 80
+        self.avatar_size = 150
         
     def _get_font(self, size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
         """Get font with fallback to default."""
-        try:
-            font_path = "/System/Library/Fonts/Arial.ttf" if not bold else "/System/Library/Fonts/Arial Bold.ttf"
-            return ImageFont.truetype(font_path, size)
-        except:
+        # List of font paths to try (macOS, Ubuntu/Debian, Windows)
+        font_paths = [
+            "/System/Library/Fonts/Arial.ttf",  # macOS
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Ubuntu/Debian
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Ubuntu/Debian Bold
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",  # Some Linux distributions
+            "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",  # Some Linux distributions Bold
+            "arial.ttf",  # Windows fallback
+            "Arial.ttf"   # Windows fallback
+        ]
+        
+        # Select appropriate paths based on bold requirement
+        if bold:
+            priority_paths = [
+                "/System/Library/Fonts/Arial Bold.ttf",  # macOS
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Ubuntu/Debian
+                "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",  # Some Linux
+            ]
+            font_paths = priority_paths + font_paths
+        
+        for font_path in font_paths:
             try:
-                return ImageFont.truetype("arial.ttf", size)
+                return ImageFont.truetype(font_path, size)
             except:
-                return ImageFont.load_default()
+                continue
+        
+        # Ultimate fallback - load default font at specified size
+        try:
+            return ImageFont.load_default(size=size)
+        except:
+            return ImageFont.load_default()
     
     def _download_avatar(self, avatar_url: str) -> Optional[Image.Image]:
         """Download and process user avatar."""
@@ -56,7 +80,7 @@ class QuoteCardGenerator:
         if not initials:
             initials = 'U'
         
-        font = self._get_font(40, bold=True)
+        font = self._get_font(80, bold=True)
         bbox = draw.textbbox((0, 0), initials, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
@@ -117,7 +141,7 @@ class QuoteCardGenerator:
         draw = ImageDraw.Draw(image)
         
         # Create card background
-        card_margin = 20
+        card_margin = 40
         card_bg = (255, 255, 255, 240)
         card_coords = [
             card_margin, 
@@ -127,7 +151,7 @@ class QuoteCardGenerator:
         ]
         
         # Draw card with rounded corners (approximation)
-        corner_radius = 15
+        corner_radius = 30
         draw.rounded_rectangle(card_coords, corner_radius, fill=card_bg[:3])
         
         # Get avatar
@@ -150,21 +174,21 @@ class QuoteCardGenerator:
             image.paste(avatar, (avatar_x, avatar_y))
         
         # Author name
-        name_font = self._get_font(32, bold=True)
-        name_x = avatar_x + self.avatar_size + 20
-        name_y = avatar_y + 10
+        name_font = self._get_font(64, bold=True)
+        name_x = avatar_x + self.avatar_size + 40
+        name_y = avatar_y + 20
         draw.text((name_x, name_y), author_name, fill=(50, 50, 50), font=name_font)
         
         # Message text
-        text_font = self._get_font(28)
-        text_start_y = avatar_y + self.avatar_size + 30
+        text_font = self._get_font(56)
+        text_start_y = avatar_y + self.avatar_size + 60
         text_max_width = self.card_width - (2 * card_margin) - (2 * self.padding)
         
         # Wrap text
         lines = self._wrap_text(message_text, text_font, text_max_width)
         
         # Limit lines to fit in card
-        line_height = 35  # Increased line height for larger font
+        line_height = 70  # Significantly increased line height for larger font
         max_lines = (self.card_height - text_start_y - card_margin - self.padding) // line_height
         if len(lines) > max_lines:
             lines = lines[:max_lines-1] + ['...']
@@ -174,9 +198,9 @@ class QuoteCardGenerator:
             line_y = text_start_y + (i * line_height)
             draw.text((card_margin + self.padding, line_y), line, fill=(70, 70, 70), font=text_font)
         
-        # Save to BytesIO
+        # Save to BytesIO with high quality
         output = io.BytesIO()
-        image.save(output, format='PNG')
+        image.save(output, format='PNG', optimize=True, quality=95, dpi=(300, 300))
         output.seek(0)
         
         return output

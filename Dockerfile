@@ -2,9 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and fonts
 RUN apt-get update && apt-get install -y \
     fonts-dejavu-core \
+    fonts-dejavu \
+    fonts-liberation \
+    fontconfig \
+    && fc-cache -f -v \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
