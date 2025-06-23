@@ -225,30 +225,45 @@ class QuoteCardGenerator:
         text_area_x = avatar_x + self.avatar_size + 40
         text_area_width = card_width - text_area_x - self.card_margin - self.padding
         
-        # Author name (positioned in text area)
+        # Fonts
         name_font = self._get_font(52, bold=True)
-        name_y = avatar_y + 10
-        draw.text((text_area_x, name_y), author_name, fill=(220, 220, 220), font=name_font)  # Light text for dark theme
-        
-        # Message text
         text_font = self._get_font(48)
-        text_start_y = name_y + 65  # Start below name
-        text_max_width = text_area_width
         
-        # Wrap text
-        lines = self._wrap_text(message_text, text_font, text_max_width)
+        # Wrap text first to calculate total content height
+        lines = self._wrap_text(message_text, text_font, text_area_width)
         
-        # Limit lines to fit in card
+        # Calculate total content dimensions
         line_height = 60
-        available_height = card_height - text_start_y - self.card_margin - self.padding
-        max_lines = available_height // line_height
+        name_height = 65
+        text_block_height = len(lines) * line_height
+        total_content_height = name_height + text_block_height
+        
+        # Available vertical space in text area
+        text_area_top = self.card_margin + self.padding
+        text_area_bottom = card_height - self.card_margin - self.padding
+        available_height = text_area_bottom - text_area_top
+        
+        # Center the content vertically
+        vertical_offset = (available_height - total_content_height) // 2
+        content_start_y = text_area_top + vertical_offset
+        
+        # Position author name (centered vertically with text)
+        name_y = content_start_y
+        draw.text((text_area_x, name_y), author_name, fill=(220, 220, 220), font=name_font)
+        
+        # Position message text
+        text_start_y = name_y + name_height
+        
+        # Limit lines to fit in remaining space if needed
+        remaining_height = text_area_bottom - text_start_y
+        max_lines = remaining_height // line_height
         if len(lines) > max_lines:
             lines = lines[:max_lines-1] + ['...']
         
         # Draw text lines
         for i, line in enumerate(lines):
             line_y = text_start_y + (i * line_height)
-            draw.text((text_area_x, line_y), line, fill=(190, 190, 190), font=text_font)  # Light gray text for dark theme
+            draw.text((text_area_x, line_y), line, fill=(190, 190, 190), font=text_font)
         
         # Save to BytesIO with high quality
         output = io.BytesIO()
